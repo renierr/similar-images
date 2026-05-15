@@ -18,6 +18,8 @@ def main() -> None:
         shutil.rmtree(dist_dir)
 
     entry_script = project_root / "run_similar_images.py"
+    splash_img = project_root / "splash.png"
+    
     args = [
         "--noconfirm",
         "--clean",
@@ -29,8 +31,12 @@ def main() -> None:
         str(project_root / "src"),
         "--collect-all",
         "customtkinter",
-        str(entry_script),
     ]
+    
+    if splash_img.exists():
+        args.extend(["--splash", str(splash_img)])
+        
+    args.append(str(entry_script))
 
     PyInstaller.__main__.run(args)
 

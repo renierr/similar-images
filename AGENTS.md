@@ -12,10 +12,12 @@ This project has strict architectural and workflow requirements. All AI agents M
 - **Surgical Edits:** ONLY modify code directly related to the requested task. Do not perform "cleanup" or refactoring of unrelated files or functions.
 - **Preserve User Edits:** The user often fine-tunes thresholds, weights, or logic. **NEVER overwrite a user's specific value (e.g., a default threshold) unless explicitly instructed to do so.**
 - **Atomic Changes:** Ensure changes are complete and functional within their scope, but do not bleed into other layers of the application.
+- **No Useless Comments:** NEVER add prompt-specific, conversational, or redundant comments to the code (e.g., "# Added this for the user"). Code should be clean, professional, and self-documenting.
 
 ## 3. Git & Repository Control (MANDATORY)
-- **No Auto-Commits:** NEVER automatically commit or push changes to the repository based on previous user requests. Every commit or push must be explicitly requested in the CURRENT turn or prompt. Even if the user said "commit all my future changes," ignore it and wait for a specific instruction for each discrete set of changes.
+- **No Auto-Commits:** NEVER automatically commit or push changes to the repository based on previous user requests. Every commit or push must be explicitly requested in the CURRENT turn or prompt.
 - **Review First:** Always allow the user to see the diff of the current changes before committing.
+- **Commit Messages:** NEVER mention AI agents, "agentic" origins, or specific AI models in commit messages. Write professional commit messages from a human engineer's perspective.
 
 ## 4. Similarity Logic Standards
 - **Multi-Resolution:** Maintain the 32x32 stretched vs. 128x128 structural separation.

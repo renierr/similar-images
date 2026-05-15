@@ -251,6 +251,12 @@ class SimilarImagesGUI(ctk.CTk):
             messagebox.showerror("Error", message)
 
 def main():
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except ImportError:
+        pass
+
     app = SimilarImagesGUI()
     app.mainloop()
 

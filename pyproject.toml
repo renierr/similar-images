@@ -10,7 +10,7 @@ requires-python = ">=3.10,<4"
 dependencies = [
     "customtkinter>=5.2.2",
     "numpy>=2.2.6",
-    "opencv-python>=4.13.0.92",
+    "opencv-python-headless>=4.13.0.92",
     "pillow>=12.2.0",
     "pyinstaller>=6.14.0",
     "rich>=15.0.0",
@@ -20,6 +20,11 @@ dependencies = [
 [project.scripts]
 similar-images = "similar_images.cli:main"
 similar-images-gui = "similar_images.gui:main"
+
+[project.optional-dependencies]
+splash = [
+    "pyinstaller>=6.20.0",
+]
 
 [build-system]
 requires = ["hatchling"]
