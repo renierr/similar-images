@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
@@ -23,13 +24,19 @@ def _summary_counts(results: list[PairResult]) -> tuple[int, int, int]:
     return duplicates, similars, differents
 
 
-def _thumbnail_html(image_path: Path, classifier: str) -> str:
+def _compact_path(image_path: Path, scanned_folders: list[Path]) -> str:
+    for folder in scanned_folders:
+        try:
+            return str(image_path.relative_to(folder))
+        except ValueError:
+            continue
+    return str(image_path)
+
+
+def _thumbnail_html(image_id: int, classifier: str) -> str:
     if classifier not in {"similar", "duplicate"}:
         return "<span class='muted'>-</span>"
-
-    src = image_path.as_uri()
-    alt = escape(image_path.name)
-    return f"<img class='thumb' src='{src}' alt='{alt}' loading='lazy' />"
+    return f"<img class='thumb js-thumb' data-img-id='{image_id}' alt='thumbnail' loading='lazy' />"
 
 
 def _score_gauge_html(score: float) -> str:
@@ -44,37 +51,33 @@ def _score_gauge_html(score: float) -> str:
     )
 
 
-def _image_cell_html(image_path: Path, image_name: str, classifier: str) -> str:
+def _image_cell_html(
+    image_id: int,
+    image_name: str,
+    compact_path: str,
+    classifier: str,
+) -> str:
     return "".join(
         [
             "<div class='image-cell'>",
-            _thumbnail_html(image_path, classifier),
+            _thumbnail_html(image_id, classifier),
             "<div class='image-meta'>",
             f"<div class='image-name'>{escape(image_name)}</div>",
-            f"<div class='image-path'>{escape(str(image_path))}</div>",
+            f"<div class='image-path'>{escape(compact_path)}</div>",
             "</div>",
             "</div>",
         ]
     )
 
 
-def _classifier_cell_html(item: PairResult) -> str:
+def _classifier_cell_html(item: PairResult, left_id: int, right_id: int) -> str:
     if item.classifier in {"similar", "duplicate"}:
-        left_src = item.left.path.as_uri()
-        right_src = item.right.path.as_uri()
-        left_name = escape(item.left.name)
-        right_name = escape(item.right.name)
-        score = f"{item.score:.4f}"
         classifier = escape(item.classifier)
         return (
             "<button class='compare-btn'"
-            f" data-left-src='{left_src}'"
-            f" data-right-src='{right_src}'"
-            f" data-left-path='{escape(str(item.left.path))}'"
-            f" data-right-path='{escape(str(item.right.path))}'"
-            f" data-left-name='{left_name}'"
-            f" data-right-name='{right_name}'"
-            f" data-score='{score}'"
+            f" data-left-id='{left_id}'"
+            f" data-right-id='{right_id}'"
+            f" data-score='{item.score:.4f}'"
             f" data-classifier='{classifier}'"
             f">{classifier}</button>"
         )
@@ -97,22 +100,45 @@ def build_html_report(
         [f"<li>{escape(str(folder))}</li>" for folder in scanned_folders]
     )
 
+    image_to_id: dict[Path, int] = {}
+    image_registry: list[dict[str, str]] = []
+
+    def image_id_for(path: Path, name: str) -> int:
+        existing = image_to_id.get(path)
+        if existing is not None:
+            return existing
+        new_id = len(image_registry)
+        image_to_id[path] = new_id
+        image_registry.append(
+            {
+                "name": name,
+                "path": str(path),
+                "compact_path": _compact_path(path, scanned_folders),
+                "uri": path.as_uri(),
+            }
+        )
+        return new_id
+
     rows = []
     for item in results:
+        left_id = image_id_for(item.left.path, item.left.name)
+        right_id = image_id_for(item.right.path, item.right.name)
+
         rows.append(
             "".join(
                 [
                     f"<tr class='{_row_class(item.classifier)}'>",
-                    f"<td>{_image_cell_html(item.left.path, item.left.name, item.classifier)}</td>",
-                    f"<td>{_image_cell_html(item.right.path, item.right.name, item.classifier)}</td>",
+                    f"<td>{_image_cell_html(left_id, item.left.name, image_registry[left_id]['compact_path'], item.classifier)}</td>",
+                    f"<td>{_image_cell_html(right_id, item.right.name, image_registry[right_id]['compact_path'], item.classifier)}</td>",
                     f"<td>{_score_gauge_html(item.score)}</td>",
-                    f"<td class='classifier'>{_classifier_cell_html(item)}</td>",
+                    f"<td class='classifier'>{_classifier_cell_html(item, left_id, right_id)}</td>",
                     "</tr>",
                 ]
             )
         )
 
     table_body = "\n".join(rows) if rows else "<tr><td colspan='4'>No comparable image pairs found.</td></tr>"
+    image_registry_json = json.dumps(image_registry)
 
     html = f"""<!doctype html>
 <html lang=\"en\">
@@ -254,6 +280,7 @@ def build_html_report(
   </main>
   <script>
     (function () {{
+      const imageRegistry = {image_registry_json};
       const dialog = document.getElementById('compareDialog');
       const dialogTitle = document.getElementById('dialogTitle');
       const dialogClose = document.getElementById('dialogClose');
@@ -265,23 +292,37 @@ def build_html_report(
       const rightPath = document.getElementById('dialogRightPath');
       const dialogMeta = document.getElementById('dialogMeta');
 
+      document.querySelectorAll('.js-thumb').forEach((img) => {{
+        const imageId = Number.parseInt(img.dataset.imgId || '-1', 10);
+        if (!Number.isNaN(imageId) && imageRegistry[imageId]) {{
+          img.src = imageRegistry[imageId].uri;
+          img.alt = imageRegistry[imageId].name;
+        }}
+      }});
+
       document.querySelectorAll('.compare-btn').forEach((btn) => {{
         btn.addEventListener('click', () => {{
-          const leftSrc = btn.dataset.leftSrc || '';
-          const rightSrc = btn.dataset.rightSrc || '';
-          const leftLabel = btn.dataset.leftName || 'Left image';
-          const rightLabel = btn.dataset.rightName || 'Right image';
-          const leftFilePath = btn.dataset.leftPath || leftSrc;
-          const rightFilePath = btn.dataset.rightPath || rightSrc;
+          const leftId = Number.parseInt(btn.dataset.leftId || '-1', 10);
+          const rightId = Number.parseInt(btn.dataset.rightId || '-1', 10);
+          if (Number.isNaN(leftId) || Number.isNaN(rightId)) {{
+            return;
+          }}
+
+          const left = imageRegistry[leftId];
+          const right = imageRegistry[rightId];
+          if (!left || !right) {{
+            return;
+          }}
+
           const score = btn.dataset.score || '';
           const classifier = btn.dataset.classifier || '';
 
-          leftImg.src = leftSrc;
-          rightImg.src = rightSrc;
-          leftName.textContent = leftLabel;
-          rightName.textContent = rightLabel;
-          leftPath.textContent = leftFilePath;
-          rightPath.textContent = rightFilePath;
+          leftImg.src = left.uri;
+          rightImg.src = right.uri;
+          leftName.textContent = left.name;
+          rightName.textContent = right.name;
+          leftPath.textContent = left.path;
+          rightPath.textContent = right.path;
           dialogTitle.textContent = `${{classifier.charAt(0).toUpperCase() + classifier.slice(1)}} comparison`;
           dialogMeta.textContent = `Score: ${{score}} | Classifier: ${{classifier}}`;
 
