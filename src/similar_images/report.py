@@ -22,6 +22,64 @@ def _summary_counts(results: list[PairResult]) -> tuple[int, int, int]:
     return duplicates, similars, differents
 
 
+def _thumbnail_html(image_path: Path, classifier: str) -> str:
+    if classifier not in {"similar", "duplicate"}:
+        return "<span class='muted'>-</span>"
+
+    src = image_path.as_uri()
+    alt = escape(image_path.name)
+    return f"<img class='thumb' src='{src}' alt='{alt}' loading='lazy' />"
+
+
+def _score_gauge_html(score: float) -> str:
+    pct = max(0.0, min(100.0, score * 100.0))
+    return "".join(
+        [
+            "<div class='score-wrap'>",
+            f"<div class='score-number'>{score:.4f}</div>",
+            f"<div class='gauge'><span class='fill' style='width:{pct:.2f}%'></span></div>",
+            "</div>",
+        ]
+    )
+
+
+def _image_cell_html(image_path: Path, image_name: str, classifier: str) -> str:
+    return "".join(
+        [
+            "<div class='image-cell'>",
+            _thumbnail_html(image_path, classifier),
+            "<div class='image-meta'>",
+            f"<div class='image-name'>{escape(image_name)}</div>",
+            f"<div class='image-path'>{escape(str(image_path))}</div>",
+            "</div>",
+            "</div>",
+        ]
+    )
+
+
+def _classifier_cell_html(item: PairResult) -> str:
+    if item.classifier in {"similar", "duplicate"}:
+        left_src = item.left.path.as_uri()
+        right_src = item.right.path.as_uri()
+        left_name = escape(item.left.name)
+        right_name = escape(item.right.name)
+        score = f"{item.score:.4f}"
+        classifier = escape(item.classifier)
+        return (
+            "<button class='compare-btn'"
+            f" data-left-src='{left_src}'"
+            f" data-right-src='{right_src}'"
+            f" data-left-path='{escape(str(item.left.path))}'"
+            f" data-right-path='{escape(str(item.right.path))}'"
+            f" data-left-name='{left_name}'"
+            f" data-right-name='{right_name}'"
+            f" data-score='{score}'"
+            f" data-classifier='{classifier}'"
+            f">{classifier}</button>"
+        )
+    return "<span class='classifier muted'>different</span>"
+
+
 def build_html_report(
     scanned_folder: Path,
     output_path: Path,
@@ -40,18 +98,16 @@ def build_html_report(
             "".join(
                 [
                     f"<tr class='{_row_class(item.classifier)}'>",
-                    f"<td>{escape(item.left.name)}</td>",
-                    f"<td>{escape(str(item.left.path))}</td>",
-                    f"<td>{escape(item.right.name)}</td>",
-                    f"<td>{escape(str(item.right.path))}</td>",
-                    f"<td>{item.score:.4f}</td>",
-                    f"<td>{escape(item.classifier)}</td>",
+                    f"<td>{_image_cell_html(item.left.path, item.left.name, item.classifier)}</td>",
+                    f"<td>{_image_cell_html(item.right.path, item.right.name, item.classifier)}</td>",
+                    f"<td>{_score_gauge_html(item.score)}</td>",
+                    f"<td class='classifier'>{_classifier_cell_html(item)}</td>",
                     "</tr>",
                 ]
             )
         )
 
-    table_body = "\n".join(rows) if rows else "<tr><td colspan='7'>No comparable image pairs found.</td></tr>"
+    table_body = "\n".join(rows) if rows else "<tr><td colspan='4'>No comparable image pairs found.</td></tr>"
 
     html = f"""<!doctype html>
 <html lang=\"en\">
@@ -82,12 +138,54 @@ def build_html_report(
     .stat .k {{ color: var(--muted); font-size: 0.85rem; }}
     .stat .v {{ font-size: 1.2rem; font-weight: 700; }}
     .table-wrap {{ margin-top: 18px; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; }}
-    table {{ border-collapse: collapse; width: 100%; min-width: 960px; }}
+    table {{ border-collapse: collapse; width: 100%; }}
     th, td {{ text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.92rem; }}
     th {{ background: #f1f5f9; position: sticky; top: 0; z-index: 1; }}
     tr.duplicate td {{ background: var(--dup); }}
     tr.similar td {{ background: var(--sim); }}
     tr.different td {{ background: var(--diff); }}
+    .muted {{ color: var(--muted); }}
+    .image-cell {{ display: grid; grid-template-columns: 88px 1fr; gap: 10px; align-items: center; min-width: 300px; }}
+    .thumb {{ display: block; width: 88px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; }}
+    .image-name {{ font-weight: 600; color: #0f172a; }}
+    .image-path {{ margin-top: 2px; color: #334155; font-size: 0.8rem; word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; }}
+    .score-wrap {{ width: 120px; }}
+    .gauge {{ width: 100%; height: 8px; border-radius: 999px; border: 1px solid #cbd5e1; background: #e2e8f0; overflow: hidden; }}
+    .fill {{ display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f97316, #22c55e); }}
+    .score-number {{ margin-bottom: 5px; font-variant-numeric: tabular-nums; color: #0f172a; font-weight: 700; }}
+    .classifier {{ text-transform: capitalize; font-weight: 600; }}
+    .compare-btn {{
+      border: 1px solid #94a3b8;
+      background: #f8fafc;
+      border-radius: 999px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-weight: 700;
+      text-transform: capitalize;
+      color: #0f172a;
+    }}
+    .compare-btn:hover {{ background: #e2e8f0; }}
+    .compare-btn:focus {{ outline: 2px solid #0f766e; outline-offset: 2px; }}
+    .col-score {{ width: 140px; }}
+    .col-classifier {{ width: 110px; }}
+    dialog.compare-dialog {{ border: 1px solid var(--border); border-radius: 14px; max-width: 1100px; width: 94vw; padding: 0; }}
+    dialog.compare-dialog::backdrop {{ background: rgba(2, 6, 23, 0.55); }}
+    .dialog-head {{ display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); background: #f8fafc; }}
+    .dialog-title {{ margin: 0; font-size: 1rem; }}
+    .dialog-close {{ border: 1px solid #94a3b8; background: #fff; border-radius: 8px; padding: 4px 10px; cursor: pointer; }}
+    .dialog-body {{ padding: 16px; }}
+    .compare-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
+    .compare-card {{ border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 10px; }}
+    .compare-card img {{ width: 100%; max-height: 70vh; object-fit: contain; background: #0f172a; border-radius: 8px; }}
+    .compare-caption {{ margin-top: 8px; font-weight: 600; }}
+    .compare-path {{ margin-top: 2px; color: #334155; font-size: 0.82rem; word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; }}
+    .dialog-meta {{ margin-top: 10px; color: #334155; font-size: 0.9rem; }}
+    @media (max-width: 780px) {{
+      .image-cell {{ grid-template-columns: 72px 1fr; min-width: 260px; }}
+      .thumb {{ width: 72px; height: 48px; }}
+      th, td {{ padding: 8px; }}
+      .compare-grid {{ grid-template-columns: 1fr; }}
+    }}
     .foot {{ margin-top: 10px; color: var(--muted); font-size: 0.85rem; }}
   </style>
 </head>
@@ -111,12 +209,10 @@ def build_html_report(
       <table>
         <thead>
           <tr>
-            <th>Left Name</th>
-            <th>Left Path</th>
-            <th>Right Name</th>
-            <th>Right Path</th>
-            <th>Score</th>
-            <th>Classifier</th>
+            <th>Left Image</th>
+            <th>Right Image</th>
+            <th class=\"col-score\">Score</th>
+            <th class=\"col-classifier\">Classifier</th>
           </tr>
         </thead>
         <tbody>
@@ -124,8 +220,86 @@ def build_html_report(
         </tbody>
       </table>
     </section>
-    <div class=\"foot\">Classifier values: duplicate, similar, different.</div>
+    <dialog id=\"compareDialog\" class=\"compare-dialog\">
+      <div class=\"dialog-head\">
+        <h2 id=\"dialogTitle\" class=\"dialog-title\">Image Comparison</h2>
+        <button id=\"dialogClose\" type=\"button\" class=\"dialog-close\">Close</button>
+      </div>
+      <div class=\"dialog-body\">
+        <div class=\"compare-grid\">
+          <figure class=\"compare-card\">
+            <img id=\"dialogLeftImg\" src=\"\" alt=\"Left image\" />
+            <figcaption class=\"compare-caption\" id=\"dialogLeftName\"></figcaption>
+            <div class=\"compare-path\" id=\"dialogLeftPath\"></div>
+          </figure>
+          <figure class=\"compare-card\">
+            <img id=\"dialogRightImg\" src=\"\" alt=\"Right image\" />
+            <figcaption class=\"compare-caption\" id=\"dialogRightName\"></figcaption>
+            <div class=\"compare-path\" id=\"dialogRightPath\"></div>
+          </figure>
+        </div>
+        <div class=\"dialog-meta\" id=\"dialogMeta\"></div>
+      </div>
+    </dialog>
+    <div class=\"foot\">Thumbnails are shown for similar and duplicate rows. Click classifier chips for a larger side-by-side comparison.</div>
   </main>
+  <script>
+    (function () {{
+      const dialog = document.getElementById('compareDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogClose = document.getElementById('dialogClose');
+      const leftImg = document.getElementById('dialogLeftImg');
+      const rightImg = document.getElementById('dialogRightImg');
+      const leftName = document.getElementById('dialogLeftName');
+      const rightName = document.getElementById('dialogRightName');
+      const leftPath = document.getElementById('dialogLeftPath');
+      const rightPath = document.getElementById('dialogRightPath');
+      const dialogMeta = document.getElementById('dialogMeta');
+
+      document.querySelectorAll('.compare-btn').forEach((btn) => {{
+        btn.addEventListener('click', () => {{
+          const leftSrc = btn.dataset.leftSrc || '';
+          const rightSrc = btn.dataset.rightSrc || '';
+          const leftLabel = btn.dataset.leftName || 'Left image';
+          const rightLabel = btn.dataset.rightName || 'Right image';
+          const leftFilePath = btn.dataset.leftPath || leftSrc;
+          const rightFilePath = btn.dataset.rightPath || rightSrc;
+          const score = btn.dataset.score || '';
+          const classifier = btn.dataset.classifier || '';
+
+          leftImg.src = leftSrc;
+          rightImg.src = rightSrc;
+          leftName.textContent = leftLabel;
+          rightName.textContent = rightLabel;
+          leftPath.textContent = leftFilePath;
+          rightPath.textContent = rightFilePath;
+          dialogTitle.textContent = `${{classifier.charAt(0).toUpperCase() + classifier.slice(1)}} comparison`;
+          dialogMeta.textContent = `Score: ${{score}} | Classifier: ${{classifier}}`;
+
+          if (typeof dialog.showModal === 'function') {{
+            dialog.showModal();
+          }}
+        }});
+      }});
+
+      dialogClose.addEventListener('click', () => {{
+        dialog.close();
+      }});
+
+      dialog.addEventListener('click', (event) => {{
+        const rect = dialog.getBoundingClientRect();
+        const inside = (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+        if (!inside) {{
+          dialog.close();
+        }}
+      }});
+    }})();
+  </script>
 </body>
 </html>
 """
