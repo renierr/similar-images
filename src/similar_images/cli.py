@@ -198,7 +198,13 @@ def scan(
 
 
 def main() -> None:
-    app()
+    import sys
+    # If no arguments are provided (e.g. double-clicking the .exe), launch the GUI
+    if len(sys.argv) == 1:
+        from .gui import main as gui_main
+        gui_main()
+    else:
+        app()
 
 
 @app.command("version")
