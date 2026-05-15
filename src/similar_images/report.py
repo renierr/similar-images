@@ -5,6 +5,7 @@ from html import escape
 from pathlib import Path
 
 from .models import PairResult
+from .similarity import SimilarityWeights
 
 
 def _row_class(classifier: str) -> str:
@@ -88,6 +89,7 @@ def build_html_report(
     skipped_count: int,
     similar_threshold: float,
     duplicate_threshold: float,
+    weights: SimilarityWeights,
 ) -> None:
     duplicates, similars, differents = _summary_counts(results)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -202,6 +204,7 @@ def build_html_report(
       <ul class=\"scan-list\">{scanned_folders_html}</ul>
       <div class=\"meta\">Generated at: {generated_at}</div>
       <div class=\"meta\">Thresholds - similar: {similar_threshold:.2f}, duplicate: {duplicate_threshold:.2f}</div>
+      <div class=\"meta\">Weights - histogram: {weights.histogram:.2f}, pHash: {weights.phash:.2f}, HOG: {weights.hog:.2f} (auto-normalized)</div>
       <div class=\"stats\">
         <div class=\"stat\"><div class=\"k\">Images loaded</div><div class=\"v\">{loaded_count}</div></div>
         <div class=\"stat\"><div class=\"k\">Images skipped</div><div class=\"v\">{skipped_count}</div></div>

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
 
 from .models import ImageFeatures
+
+
+@dataclass(frozen=True)
+class SimilarityWeights:
+    histogram: float = 0.4
+    phash: float = 0.2
+    hog: float = 0.4
+
+    def total(self) -> float:
+        return self.histogram + self.phash + self.hog
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -14,7 +26,11 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
-def similarity_score(features_a: ImageFeatures, features_b: ImageFeatures) -> float:
+def similarity_score(
+    features_a: ImageFeatures,
+    features_b: ImageFeatures,
+    weights: SimilarityWeights,
+) -> float:
     score_hist = float(cv2.compareHist(features_a.histogram, features_b.histogram, cv2.HISTCMP_CORREL))
     score_hist = max(0.0, score_hist)
 
@@ -24,7 +40,16 @@ def similarity_score(features_a: ImageFeatures, features_b: ImageFeatures) -> fl
     score_hog = _cosine_similarity(features_a.hog, features_b.hog)
     score_hog = max(0.0, score_hog)
 
-    score = (0.4 * score_hist) + (0.2 * score_phash) + (0.4 * score_hog)
+    total_weight = weights.total()
+    if total_weight <= 0.0:
+        raise ValueError("At least one similarity weight must be greater than zero.")
+
+    score = (
+        (weights.histogram * score_hist)
+        + (weights.phash * score_phash)
+        + (weights.hog * score_hog)
+    ) / total_weight
+
     return max(0.0, min(1.0, float(score)))
 
 

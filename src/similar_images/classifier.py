@@ -6,7 +6,7 @@ import cv2
 
 from .features import build_features
 from .models import ImageFeatures, ImageRecord, PairResult
-from .similarity import classify_score, similarity_score
+from .similarity import SimilarityWeights, classify_score, similarity_score
 
 
 def _extract_features(records: list[ImageRecord]) -> dict[Path, ImageFeatures]:
@@ -23,6 +23,7 @@ def compare_all(
     records: list[ImageRecord],
     similar_threshold: float,
     duplicate_threshold: float,
+    weights: SimilarityWeights,
 ) -> tuple[list[PairResult], list[ImageRecord]]:
     features = _extract_features(records)
     loaded_records = [r for r in records if r.path in features]
@@ -32,7 +33,7 @@ def compare_all(
         left = loaded_records[idx]
         for jdx in range(idx + 1, len(loaded_records)):
             right = loaded_records[jdx]
-            score = similarity_score(features[left.path], features[right.path])
+            score = similarity_score(features[left.path], features[right.path], weights=weights)
             classifier = classify_score(
                 score=score,
                 duplicate_threshold=duplicate_threshold,

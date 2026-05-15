@@ -9,6 +9,7 @@ from rich.table import Table
 from .classifier import compare_all
 from .io import scan_images_from_folders
 from .report import build_html_report
+from .similarity import SimilarityWeights
 
 app = typer.Typer(help="Scan a folder and classify similar images.")
 console = Console()
@@ -20,10 +21,24 @@ def scan(
     recursive: bool = typer.Option(True, "--recursive/--no-recursive", help="Scan nested folders too."),
     similar_threshold: float = typer.Option(0.82, min=0.0, max=1.0, help="Threshold for 'similar'."),
     duplicate_threshold: float = typer.Option(0.96, min=0.0, max=1.0, help="Threshold for 'duplicate'."),
+    histogram_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for histogram similarity."),
+    phash_weight: float = typer.Option(0.2, min=0.0, max=1.0, help="Weight for pHash similarity."),
+    hog_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for HOG similarity."),
     output: Path = typer.Option(Path("report.html"), "--output", "-o", help="HTML report path."),
 ) -> None:
     if duplicate_threshold < similar_threshold:
         raise typer.BadParameter("duplicate-threshold must be >= similar-threshold")
+
+    weights = SimilarityWeights(
+        histogram=histogram_weight,
+        phash=phash_weight,
+        hog=hog_weight,
+    )
+    if weights.total() <= 0.0:
+        raise typer.BadParameter(
+            "At least one extraction weight must be > 0. "
+            "Use --histogram-weight, --phash-weight, or --hog-weight."
+        )
 
     resolved_folders = [folder.resolve() for folder in folders]
     records = scan_images_from_folders(resolved_folders, recursive=recursive)
@@ -36,6 +51,7 @@ def scan(
         records=records,
         similar_threshold=similar_threshold,
         duplicate_threshold=duplicate_threshold,
+        weights=weights,
     )
 
     skipped_count = len(records) - len(loaded_records)
@@ -47,6 +63,7 @@ def scan(
         skipped_count=skipped_count,
         similar_threshold=similar_threshold,
         duplicate_threshold=duplicate_threshold,
+        weights=weights,
     )
 
     table = Table(title="Scan Summary")
@@ -56,6 +73,9 @@ def scan(
     table.add_row("Images loaded", str(len(loaded_records)))
     table.add_row("Images skipped", str(skipped_count))
     table.add_row("Pair comparisons", str(len(results)))
+    table.add_row("Histogram weight", f"{weights.histogram:.2f}")
+    table.add_row("pHash weight", f"{weights.phash:.2f}")
+    table.add_row("HOG weight", f"{weights.hog:.2f}")
     table.add_row("Report", str(output.resolve()))
     console.print(table)
 
