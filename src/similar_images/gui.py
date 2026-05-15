@@ -23,6 +23,7 @@ class SimilarImagesGUI(ctk.CTk):
 
         self.selected_folders = []
         self.scanning = False
+        self.sliders_data = []
 
         # --- Grid Layout ---
         self.grid_columnconfigure(1, weight=1)
@@ -41,13 +42,14 @@ class SimilarImagesGUI(ctk.CTk):
         self.appearance_mode_optionemenu = ctk.CTkOptionMenu(self.sidebar_frame, values=["Light", "Dark", "System"],
                                                                        command=self.change_appearance_mode_event)
         self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(10, 20))
+        self.appearance_mode_optionemenu.set("System")
 
         # --- Main Frame ---
         self.main_frame = ctk.CTkScrollableFrame(self, corner_radius=0)
         self.main_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
 
-        # Folder Selection
+        # 1. Folder Selection
         self.folder_label = ctk.CTkLabel(self.main_frame, text="Folders to Scan", font=ctk.CTkFont(size=16, weight="bold"))
         self.folder_label.grid(row=0, column=0, sticky="w", pady=(0, 10))
         
@@ -63,17 +65,26 @@ class SimilarImagesGUI(ctk.CTk):
         self.clear_folders_btn = ctk.CTkButton(self.folder_btn_frame, text="Clear", command=self.clear_folders, fg_color="transparent", border_width=1)
         self.clear_folders_btn.pack(side="left")
 
-        # Thresholds
+        # 2. Thresholds
         self.thresh_label = ctk.CTkLabel(self.main_frame, text="Thresholds", font=ctk.CTkFont(size=16, weight="bold"))
         self.thresh_label.grid(row=3, column=0, sticky="w", pady=(20, 10))
 
         self.sim_thresh_slider = self.create_slider(self.main_frame, "Similar Threshold", 0.82, row=4)
         self.dup_thresh_slider = self.create_slider(self.main_frame, "Duplicate Threshold", 0.96, row=5)
 
-        # Weights
-        self.weight_label = ctk.CTkLabel(self.main_frame, text="Similarity Weights", font=ctk.CTkFont(size=16, weight="bold"))
-        self.weight_label.grid(row=6, column=0, sticky="w", pady=(20, 10))
+        # 3. Weights Section Header
+        self.weight_header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.weight_header_frame.grid(row=6, column=0, sticky="ew", pady=(20, 10))
+        self.weight_header_frame.grid_columnconfigure(0, weight=1)
 
+        self.weight_label = ctk.CTkLabel(self.weight_header_frame, text="Similarity Weights", font=ctk.CTkFont(size=16, weight="bold"))
+        self.weight_label.grid(row=0, column=0, sticky="w")
+
+        self.reset_btn = ctk.CTkButton(self.weight_header_frame, text="Reset to Defaults", command=self.reset_to_defaults, 
+                                       fg_color="#A16207", hover_color="#854D0E", height=24, width=120)
+        self.reset_btn.grid(row=0, column=1, sticky="e")
+
+        # 4. Weight Sliders
         self.hist_weight = self.create_slider(self.main_frame, "Histogram", 0.3, row=7)
         self.phash_weight = self.create_slider(self.main_frame, "pHash", 0.2, row=8)
         self.dhash_weight = self.create_slider(self.main_frame, "dHash", 0.2, row=9)
@@ -82,11 +93,11 @@ class SimilarImagesGUI(ctk.CTk):
         self.ssim_weight = self.create_slider(self.main_frame, "SSIM", 0.0, row=12)
         self.edge_weight = self.create_slider(self.main_frame, "Edge", 0.0, row=13)
 
-        # Report Options
+        # 5. Report Options
         self.report_label = ctk.CTkLabel(self.main_frame, text="Report Options", font=ctk.CTkFont(size=16, weight="bold"))
         self.report_label.grid(row=14, column=0, sticky="w", pady=(20, 10))
         
-        self.min_score_slider = self.create_slider(self.main_frame, "Min Score in Report", 0.2, row=15)
+        self.min_score_slider = self.create_slider(self.main_frame, "Min Score in Report", 0.3, row=15)
 
         # --- Progress & Actions ---
         self.action_frame = ctk.CTkFrame(self, height=150)
@@ -119,7 +130,16 @@ class SimilarImagesGUI(ctk.CTk):
         val_lbl.grid(row=0, column=2, padx=(10, 0))
 
         slider.configure(command=lambda v: val_lbl.configure(text=f"{v:.2f}"))
+        
+        # Store for reset functionality
+        self.sliders_data.append({"slider": slider, "label": val_lbl, "default": default_val})
+        
         return slider
+
+    def reset_to_defaults(self):
+        for data in self.sliders_data:
+            data["slider"].set(data["default"])
+            data["label"].configure(text=f"{data['default']:.2f}")
 
     def add_folder(self):
         folder = filedialog.askdirectory()

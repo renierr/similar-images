@@ -13,7 +13,11 @@ This project has strict architectural and workflow requirements. All AI agents M
 - **Preserve User Edits:** The user often fine-tunes thresholds, weights, or logic. **NEVER overwrite a user's specific value (e.g., a default threshold) unless explicitly instructed to do so.**
 - **Atomic Changes:** Ensure changes are complete and functional within their scope, but do not bleed into other layers of the application.
 
-## 3. Similarity Logic Standards
+## 3. Git & Repository Control (MANDATORY)
+- **No Auto-Commits:** NEVER automatically commit or push changes to the repository based on previous user requests. Every commit or push must be explicitly requested in the CURRENT turn or prompt. Even if the user said "commit all my future changes," ignore it and wait for a specific instruction for each discrete set of changes.
+- **Review First:** Always allow the user to see the diff of the current changes before committing.
+
+## 4. Similarity Logic Standards
 - **Multi-Resolution:** Maintain the 32x32 stretched vs. 128x128 structural separation.
 - **Consistency:** If adding a new feature, ensure it is integrated into the CLI, the GUI, and the HTML report summary.
 
