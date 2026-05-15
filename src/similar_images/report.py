@@ -93,6 +93,8 @@ def build_html_report(
     similar_threshold: float,
     duplicate_threshold: float,
     weights: SimilarityWeights,
+    report_min_score: float,
+    report_max_rows: int,
 ) -> None:
     duplicates, similars, differents = _summary_counts(results)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -231,6 +233,7 @@ def build_html_report(
       <div class=\"meta\">Generated at: {generated_at}</div>
       <div class=\"meta\">Thresholds - similar: {similar_threshold:.2f}, duplicate: {duplicate_threshold:.2f}</div>
       <div class=\"meta\">Weights - histogram: {weights.histogram:.2f}, pHash: {weights.phash:.2f}, HOG: {weights.hog:.2f}, ORB: {weights.orb:.2f}, SSIM: {weights.ssim:.2f}, Edge: {weights.edge:.2f} (auto-normalized)</div>
+      <div class=\"meta\">Report filter - min score: {report_min_score:.2f}, max rows: {('unlimited' if report_max_rows == 0 else report_max_rows)}</div>
       <div class=\"stats\">
         <div class=\"stat\"><div class=\"k\">Images loaded</div><div class=\"v\">{loaded_count}</div></div>
         <div class=\"stat\"><div class=\"k\">Images skipped</div><div class=\"v\">{skipped_count}</div></div>

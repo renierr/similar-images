@@ -60,6 +60,8 @@ Options:
 - `--orb-weight` weight for ORB keypoint match feature (default `0.0`)
 - `--ssim-weight` weight for SSIM grayscale structure similarity (default `0.0`)
 - `--edge-weight` weight for Canny edge-structure similarity (default `0.0`)
+- `--report-min-score` minimum score to include rows in report (default `0.0`)
+- `--report-max-rows` maximum report rows; `0` means unlimited (default `0`)
 - `--output`, `-o` output report path (default `report.html`)
 
 Notes:
@@ -88,6 +90,9 @@ uv run similar-images scan "C:/images" --histogram-weight 0.2 --phash-weight 0.2
 
 # Add structure-focused weights for low-res/high-res mix
 uv run similar-images scan "C:/images" --histogram-weight 0.15 --phash-weight 0.15 --hog-weight 0.2 --orb-weight 0.2 --ssim-weight 0.15 --edge-weight 0.15
+
+# Keep report small
+uv run similar-images scan "C:/images" --report-min-score 0.8 --report-max-rows 500
 ```
 
 ## Output report

@@ -28,6 +28,17 @@ def scan(
     orb_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for ORB keypoint match similarity."),
     ssim_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for grayscale SSIM similarity."),
     edge_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for edge-structure similarity."),
+    report_min_score: float = typer.Option(
+        0.0,
+        min=0.0,
+        max=1.0,
+        help="Minimum score to include rows in HTML report.",
+    ),
+    report_max_rows: int = typer.Option(
+        0,
+        min=0,
+        help="Maximum rows in HTML report (0 = unlimited).",
+    ),
     output: Path = typer.Option(Path("report.html"), "--output", "-o", help="HTML report path."),
 ) -> None:
     if duplicate_threshold < similar_threshold:
@@ -85,15 +96,22 @@ def scan(
         )
 
     skipped_count = len(records) - len(loaded_records)
+
+    filtered_results = [r for r in results if r.score >= report_min_score]
+    if report_max_rows > 0:
+        filtered_results = filtered_results[:report_max_rows]
+
     build_html_report(
         scanned_folders=resolved_folders,
         output_path=output.resolve(),
-        results=results,
+        results=filtered_results,
         loaded_count=len(loaded_records),
         skipped_count=skipped_count,
         similar_threshold=similar_threshold,
         duplicate_threshold=duplicate_threshold,
         weights=weights,
+        report_min_score=report_min_score,
+        report_max_rows=report_max_rows,
     )
 
     table = Table(title="Scan Summary")
@@ -103,6 +121,9 @@ def scan(
     table.add_row("Images loaded", str(len(loaded_records)))
     table.add_row("Images skipped", str(skipped_count))
     table.add_row("Pair comparisons", str(len(results)))
+    table.add_row("Report rows", str(len(filtered_results)))
+    table.add_row("Report min score", f"{report_min_score:.2f}")
+    table.add_row("Report max rows", "unlimited" if report_max_rows == 0 else str(report_max_rows))
     table.add_row("Histogram weight", f"{weights.histogram:.2f}")
     table.add_row("pHash weight", f"{weights.phash:.2f}")
     table.add_row("HOG weight", f"{weights.hog:.2f}")
