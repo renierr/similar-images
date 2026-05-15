@@ -10,15 +10,24 @@ from .models import ImageFeatures
 
 @dataclass(frozen=True)
 class SimilarityWeights:
-    histogram: float = 0.4
+    histogram: float = 0.3
     phash: float = 0.2
-    hog: float = 0.4
+    dhash: float = 0.2
+    hog: float = 0.3
     orb: float = 0.0
     ssim: float = 0.0
     edge: float = 0.0
 
     def total(self) -> float:
-        return self.histogram + self.phash + self.hog + self.orb + self.ssim + self.edge
+        return (
+            self.histogram
+            + self.phash
+            + self.dhash
+            + self.hog
+            + self.orb
+            + self.ssim
+            + self.edge
+        )
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -98,6 +107,9 @@ def similarity_score(
     phash_distance = np.sum(features_a.phash != features_b.phash) / len(features_a.phash)
     score_phash = 1.0 - float(phash_distance)
 
+    dhash_distance = np.sum(features_a.dhash != features_b.dhash) / len(features_a.dhash)
+    score_dhash = 1.0 - float(dhash_distance)
+
     score_hog = _cosine_similarity(features_a.hog, features_b.hog)
     score_hog = max(0.0, score_hog)
 
@@ -112,6 +124,7 @@ def similarity_score(
     score = (
         (weights.histogram * score_hist)
         + (weights.phash * score_phash)
+        + (weights.dhash * score_dhash)
         + (weights.hog * score_hog)
         + (weights.orb * score_orb)
         + (weights.ssim * score_ssim)

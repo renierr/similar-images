@@ -4,7 +4,13 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
-from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 from .classifier import compare_all
@@ -18,18 +24,41 @@ console = Console()
 
 @app.command("scan")
 def scan(
-    folders: list[Path] = typer.Argument(..., exists=True, file_okay=False, dir_okay=True, readable=True),
-    recursive: bool = typer.Option(True, "--recursive/--no-recursive", help="Scan nested folders too."),
-    similar_threshold: float = typer.Option(0.82, min=0.0, max=1.0, help="Threshold for 'similar'."),
-    duplicate_threshold: float = typer.Option(0.96, min=0.0, max=1.0, help="Threshold for 'duplicate'."),
-    histogram_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for histogram similarity."),
-    phash_weight: float = typer.Option(0.2, min=0.0, max=1.0, help="Weight for pHash similarity."),
-    hog_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for HOG similarity."),
-    orb_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for ORB keypoint match similarity."),
-    ssim_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for grayscale SSIM similarity."),
-    edge_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for edge-structure similarity."),
+    folders: list[Path] = typer.Argument(
+        ..., exists=True, file_okay=False, dir_okay=True, readable=True
+    ),
+    recursive: bool = typer.Option(
+        True, "--recursive/--no-recursive", help="Scan nested folders too."
+    ),
+    similar_threshold: float = typer.Option(
+        0.82, min=0.0, max=1.0, help="Threshold for 'similar'."
+    ),
+    duplicate_threshold: float = typer.Option(
+        0.96, min=0.0, max=1.0, help="Threshold for 'duplicate'."
+    ),
+    histogram_weight: float = typer.Option(
+        0.3, min=0.0, max=1.0, help="Weight for histogram similarity."
+    ),
+    phash_weight: float = typer.Option(
+        0.2, min=0.0, max=1.0, help="Weight for pHash similarity."
+    ),
+    dhash_weight: float = typer.Option(
+        0.2, min=0.0, max=1.0, help="Weight for dHash similarity."
+    ),
+    hog_weight: float = typer.Option(
+        0.3, min=0.0, max=1.0, help="Weight for HOG similarity."
+    ),
+    orb_weight: float = typer.Option(
+        0.0, min=0.0, max=1.0, help="Weight for ORB keypoint match similarity."
+    ),
+    ssim_weight: float = typer.Option(
+        0.0, min=0.0, max=1.0, help="Weight for grayscale SSIM similarity."
+    ),
+    edge_weight: float = typer.Option(
+        0.0, min=0.0, max=1.0, help="Weight for edge-structure similarity."
+    ),
     report_min_score: float = typer.Option(
-        0.0,
+        0.3,
         min=0.0,
         max=1.0,
         help="Minimum score to include rows in HTML report.",
@@ -39,14 +68,33 @@ def scan(
         min=0,
         help="Maximum rows in HTML report (0 = unlimited).",
     ),
-    output: Path = typer.Option(Path("report.html"), "--output", "-o", help="HTML report path."),
+    output: Path = typer.Option(
+        Path("report.html"), "--output", "-o", help="HTML report path."
+    ),
+    reset_weights: bool = typer.Option(
+        False,
+        "--reset-weights",
+        help="Set all similarity weights to 0.0 before applying other weight options.",
+    ),
 ) -> None:
     if duplicate_threshold < similar_threshold:
         raise typer.BadParameter("duplicate-threshold must be >= similar-threshold")
 
+    if reset_weights:
+        import sys
+
+        histogram_weight = histogram_weight if "--histogram-weight" in sys.argv else 0.0
+        phash_weight = phash_weight if "--phash-weight" in sys.argv else 0.0
+        dhash_weight = dhash_weight if "--dhash-weight" in sys.argv else 0.0
+        hog_weight = hog_weight if "--hog-weight" in sys.argv else 0.0
+        orb_weight = orb_weight if "--orb-weight" in sys.argv else 0.0
+        ssim_weight = ssim_weight if "--ssim-weight" in sys.argv else 0.0
+        edge_weight = edge_weight if "--edge-weight" in sys.argv else 0.0
+
     weights = SimilarityWeights(
         histogram=histogram_weight,
         phash=phash_weight,
+        dhash=dhash_weight,
         hog=hog_weight,
         orb=orb_weight,
         ssim=ssim_weight,
@@ -55,7 +103,7 @@ def scan(
     if weights.total() <= 0.0:
         raise typer.BadParameter(
             "At least one extraction weight must be > 0. "
-            "Use --histogram-weight, --phash-weight, --hog-weight, --orb-weight, --ssim-weight, or --edge-weight."
+            "Use --histogram-weight, --phash-weight, --dhash-weight, --hog-weight, --orb-weight, --ssim-weight, or --edge-weight."
         )
 
     resolved_folders = [folder.resolve() for folder in folders]
@@ -64,7 +112,9 @@ def scan(
         console.print("No supported images found in provided folders.")
         raise typer.Exit(code=1)
 
-    console.print(f"Found {len(records)} image files. Building features and comparing...")
+    console.print(
+        f"Found {len(records)} image files. Building features and comparing..."
+    )
 
     with Progress(
         TextColumn("[bold cyan]{task.description}"),
@@ -98,6 +148,7 @@ def scan(
     skipped_count = len(records) - len(loaded_records)
 
     filtered_results = [r for r in results if r.score >= report_min_score]
+    hidden_count = len(results) - len(filtered_results)
     if report_max_rows > 0:
         filtered_results = filtered_results[:report_max_rows]
 
@@ -112,6 +163,7 @@ def scan(
         weights=weights,
         report_min_score=report_min_score,
         report_max_rows=report_max_rows,
+        hidden_count=hidden_count,
     )
 
     table = Table(title="Scan Summary")
@@ -122,10 +174,14 @@ def scan(
     table.add_row("Images skipped", str(skipped_count))
     table.add_row("Pair comparisons", str(len(results)))
     table.add_row("Report rows", str(len(filtered_results)))
+    table.add_row("Hidden by threshold", str(hidden_count))
     table.add_row("Report min score", f"{report_min_score:.2f}")
-    table.add_row("Report max rows", "unlimited" if report_max_rows == 0 else str(report_max_rows))
+    table.add_row(
+        "Report max rows", "unlimited" if report_max_rows == 0 else str(report_max_rows)
+    )
     table.add_row("Histogram weight", f"{weights.histogram:.2f}")
     table.add_row("pHash weight", f"{weights.phash:.2f}")
+    table.add_row("dHash weight", f"{weights.dhash:.2f}")
     table.add_row("HOG weight", f"{weights.hog:.2f}")
     table.add_row("ORB weight", f"{weights.orb:.2f}")
     table.add_row("SSIM weight", f"{weights.ssim:.2f}")

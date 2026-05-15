@@ -16,6 +16,7 @@ class ImageRecord:
 class ImageFeatures:
     histogram: np.ndarray
     phash: np.ndarray
+    dhash: np.ndarray
     hog: np.ndarray
     orb_descriptors: np.ndarray | None
     orb_keypoints: int
