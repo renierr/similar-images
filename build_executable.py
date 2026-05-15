@@ -22,6 +22,7 @@ def main() -> None:
         "--noconfirm",
         "--clean",
         "--onefile",
+        "--noconsole",
         "--name",
         "similar-images",
         "--paths",
