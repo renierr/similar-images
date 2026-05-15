@@ -9,6 +9,34 @@ uv venv
 uv sync
 ```
 
+## Build executable (PyInstaller)
+
+Build a standalone executable:
+
+```bash
+uv run python build_executable.py
+```
+
+Output:
+
+- Windows: `dist/similar-images.exe`
+- Linux/macOS: `dist/similar-images`
+
+Run executable examples:
+
+```bash
+# Windows
+./dist/similar-images.exe scan "C:/path/to/images" --output report.html
+
+# Linux/macOS
+./dist/similar-images scan "/path/to/images" --output report.html
+```
+
+Notes:
+
+- Build on the same OS you plan to run on (no cross-compiling in this setup).
+- Re-run `uv sync` before building to ensure PyInstaller and dependencies are installed.
+
 ## Usage
 
 ```bash
