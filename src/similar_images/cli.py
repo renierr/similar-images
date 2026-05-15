@@ -24,6 +24,7 @@ def scan(
     histogram_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for histogram similarity."),
     phash_weight: float = typer.Option(0.2, min=0.0, max=1.0, help="Weight for pHash similarity."),
     hog_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for HOG similarity."),
+    orb_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for ORB keypoint match similarity."),
     output: Path = typer.Option(Path("report.html"), "--output", "-o", help="HTML report path."),
 ) -> None:
     if duplicate_threshold < similar_threshold:
@@ -33,6 +34,7 @@ def scan(
         histogram=histogram_weight,
         phash=phash_weight,
         hog=hog_weight,
+        orb=orb_weight,
     )
     if weights.total() <= 0.0:
         raise typer.BadParameter(
@@ -76,6 +78,7 @@ def scan(
     table.add_row("Histogram weight", f"{weights.histogram:.2f}")
     table.add_row("pHash weight", f"{weights.phash:.2f}")
     table.add_row("HOG weight", f"{weights.hog:.2f}")
+    table.add_row("ORB weight", f"{weights.orb:.2f}")
     table.add_row("Report", str(output.resolve()))
     console.print(table)
 

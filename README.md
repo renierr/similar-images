@@ -57,6 +57,7 @@ Options:
 - `--histogram-weight` weight for histogram feature (default `0.4`)
 - `--phash-weight` weight for pHash feature (default `0.2`)
 - `--hog-weight` weight for HOG feature (default `0.4`)
+- `--orb-weight` weight for ORB keypoint match feature (default `0.0`)
 - `--output`, `-o` output report path (default `report.html`)
 
 Notes:
@@ -79,6 +80,9 @@ uv run similar-images scan "C:/images" --histogram-weight 0 --hog-weight 0 --pha
 
 # Strongly favor HOG
 uv run similar-images scan "C:/images" --histogram-weight 0.1 --phash-weight 0.1 --hog-weight 0.8
+
+# Enable ORB (good for mixed resolutions)
+uv run similar-images scan "C:/images" --histogram-weight 0.2 --phash-weight 0.2 --hog-weight 0.2 --orb-weight 0.4
 ```
 
 ## Output report
@@ -102,12 +106,14 @@ Per image, the tool extracts:
 - normalized color histogram
 - DCT-based pHash
 - HOG descriptor
+- ORB keypoint descriptors
 
 Final score uses weighted blend (defaults):
 
 - histogram: 40%
 - pHash: 20%
 - HOG: 40%
+- ORB: 0% (opt-in)
 
 ### How similarity is calculated (step by step)
 
@@ -131,9 +137,14 @@ For each image, the tool computes three independent feature vectors and then com
    - Compare two HOG vectors with cosine similarity.
    - Negative cosine values are clamped to `0`.
 
-4. **Final blended score**
-   - `score = (w_hist * hist + w_phash * phash + w_hog * hog) / (w_hist + w_phash + w_hog)`
-   - Weights are configurable via CLI options (`--histogram-weight`, `--phash-weight`, `--hog-weight`).
+4. **ORB keypoint similarity (optional, default 0%)**
+   - Detect ORB keypoints/descriptors on each image.
+   - Match with Hamming BFMatcher + ratio test (`0.75`).
+   - `score_orb = good_matches / min(keypoints_a, keypoints_b)` (clamped to `[0,1]`).
+
+5. **Final blended score**
+   - `score = (w_hist * hist + w_phash * phash + w_hog * hog + w_orb * orb) / (w_hist + w_phash + w_hog + w_orb)`
+   - Weights are configurable via CLI options (`--histogram-weight`, `--phash-weight`, `--hog-weight`, `--orb-weight`).
    - Score is clamped to `[0, 1]`.
 
 ### Classification

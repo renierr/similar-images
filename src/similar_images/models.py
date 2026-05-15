@@ -17,6 +17,8 @@ class ImageFeatures:
     histogram: np.ndarray
     phash: np.ndarray
     hog: np.ndarray
+    orb_descriptors: np.ndarray | None
+    orb_keypoints: int
 
 
 @dataclass(frozen=True)

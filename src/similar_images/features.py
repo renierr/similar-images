@@ -6,6 +6,7 @@ import numpy as np
 from .models import ImageFeatures
 
 _HOG_DESCRIPTOR = cv2.HOGDescriptor((128, 128), (32, 32), (16, 16), (16, 16), 9)
+_ORB = cv2.ORB_create(nfeatures=1200)
 
 
 def _resize_and_pad(image: np.ndarray, target_size: int) -> np.ndarray:
@@ -42,4 +43,13 @@ def build_features(image_bgr: np.ndarray) -> ImageFeatures:
 
     hog = np.array(_HOG_DESCRIPTOR.compute(gray_resized)).flatten().astype(np.float32)
 
-    return ImageFeatures(histogram=hist.astype(np.float32), phash=phash, hog=hog)
+    orb_keypoints, orb_descriptors = _ORB.detectAndCompute(gray, None)
+    orb_keypoint_count = len(orb_keypoints) if orb_keypoints is not None else 0
+
+    return ImageFeatures(
+        histogram=hist.astype(np.float32),
+        phash=phash,
+        hog=hog,
+        orb_descriptors=orb_descriptors,
+        orb_keypoints=orb_keypoint_count,
+    )
