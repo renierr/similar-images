@@ -101,35 +101,45 @@ def similarity_score(
     features_b: ImageFeatures,
     weights: SimilarityWeights,
 ) -> float:
-    score_hist = float(cv2.compareHist(features_a.histogram, features_b.histogram, cv2.HISTCMP_CORREL))
-    score_hist = max(0.0, score_hist)
-
-    phash_distance = np.sum(features_a.phash != features_b.phash) / len(features_a.phash)
-    score_phash = 1.0 - float(phash_distance)
-
-    dhash_distance = np.sum(features_a.dhash != features_b.dhash) / len(features_a.dhash)
-    score_dhash = 1.0 - float(dhash_distance)
-
-    score_hog = _cosine_similarity(features_a.hog, features_b.hog)
-    score_hog = max(0.0, score_hog)
-
-    score_orb = _orb_similarity(features_a, features_b)
-    score_ssim = _ssim_similarity(features_a, features_b)
-    score_edge = _edge_similarity(features_a, features_b)
-
     total_weight = weights.total()
     if total_weight <= 0.0:
         raise ValueError("At least one similarity weight must be greater than zero.")
 
-    score = (
-        (weights.histogram * score_hist)
-        + (weights.phash * score_phash)
-        + (weights.dhash * score_dhash)
-        + (weights.hog * score_hog)
-        + (weights.orb * score_orb)
-        + (weights.ssim * score_ssim)
-        + (weights.edge * score_edge)
-    ) / total_weight
+    score = 0.0
+
+    if weights.histogram > 0:
+        score_hist = float(cv2.compareHist(features_a.histogram, features_b.histogram, cv2.HISTCMP_CORREL))
+        score_hist = max(0.0, score_hist)
+        score += weights.histogram * score_hist
+
+    if weights.phash > 0:
+        phash_distance = np.sum(features_a.phash != features_b.phash) / len(features_a.phash)
+        score_phash = 1.0 - float(phash_distance)
+        score += weights.phash * score_phash
+
+    if weights.dhash > 0:
+        dhash_distance = np.sum(features_a.dhash != features_b.dhash) / len(features_a.dhash)
+        score_dhash = 1.0 - float(dhash_distance)
+        score += weights.dhash * score_dhash
+
+    if weights.hog > 0:
+        score_hog = _cosine_similarity(features_a.hog, features_b.hog)
+        score_hog = max(0.0, score_hog)
+        score += weights.hog * score_hog
+
+    if weights.orb > 0:
+        score_orb = _orb_similarity(features_a, features_b)
+        score += weights.orb * score_orb
+
+    if weights.ssim > 0:
+        score_ssim = _ssim_similarity(features_a, features_b)
+        score += weights.ssim * score_ssim
+
+    if weights.edge > 0:
+        score_edge = _edge_similarity(features_a, features_b)
+        score += weights.edge * score_edge
+
+    score /= total_weight
 
     return max(0.0, min(1.0, float(score)))
 
