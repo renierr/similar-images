@@ -14,14 +14,14 @@ class ImageRecord:
 
 @dataclass(frozen=True)
 class ImageFeatures:
-    histogram: np.ndarray
-    phash: np.ndarray
-    dhash: np.ndarray
-    hog: np.ndarray
+    histogram: np.ndarray | None
+    phash: np.ndarray | None
+    dhash: np.ndarray | None
+    hog: np.ndarray | None
     orb_descriptors: np.ndarray | None
     orb_keypoints: int
-    gray_resized: np.ndarray
-    edge_signature: np.ndarray
+    gray_resized: np.ndarray | None
+    edge_signature: np.ndarray | None
 
 
 @dataclass(frozen=True)

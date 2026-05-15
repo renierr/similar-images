@@ -12,6 +12,7 @@ from .similarity import SimilarityWeights, classify_score, similarity_score
 
 def _extract_features(
     records: list[ImageRecord],
+    weights: SimilarityWeights,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> dict[Path, ImageFeatures]:
     output: dict[Path, ImageFeatures] = {}
@@ -22,7 +23,7 @@ def _extract_features(
             if on_progress:
                 on_progress(index, total)
             continue
-        output[rec.path] = build_features(image)
+        output[rec.path] = build_features(image, weights=weights)
         if on_progress:
             on_progress(index, total)
     return output
@@ -37,7 +38,7 @@ def compare_all(
     on_compare_start: Callable[[int], None] | None = None,
     on_compare_progress: Callable[[int, int], None] | None = None,
 ) -> tuple[list[PairResult], list[ImageRecord]]:
-    features = _extract_features(records, on_progress=on_feature_progress)
+    features = _extract_features(records, weights=weights, on_progress=on_feature_progress)
     loaded_records = [r for r in records if r.path in features]
     total_pairs = (len(loaded_records) * (len(loaded_records) - 1)) // 2
     if on_compare_start:
