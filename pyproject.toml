@@ -1,0 +1,23 @@
+[project]
+name = "similar-images"
+version = "0.1.0"
+description = "CLI tool to find and classify similar images in a folder"
+readme = "README.md"
+authors = [
+    { name = "renierr", email = "renierr@users.noreply.github.com" }
+]
+requires-python = ">=3.10,<4"
+dependencies = [
+    "numpy>=2.2.6",
+    "opencv-python>=4.13.0.92",
+    "pillow>=12.2.0",
+    "rich>=15.0.0",
+    "typer>=0.25.1",
+]
+
+[project.scripts]
+similar-images = "similar_images.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
