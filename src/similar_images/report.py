@@ -204,7 +204,7 @@ def build_html_report(
       <ul class=\"scan-list\">{scanned_folders_html}</ul>
       <div class=\"meta\">Generated at: {generated_at}</div>
       <div class=\"meta\">Thresholds - similar: {similar_threshold:.2f}, duplicate: {duplicate_threshold:.2f}</div>
-      <div class=\"meta\">Weights - histogram: {weights.histogram:.2f}, pHash: {weights.phash:.2f}, HOG: {weights.hog:.2f}, ORB: {weights.orb:.2f} (auto-normalized)</div>
+      <div class=\"meta\">Weights - histogram: {weights.histogram:.2f}, pHash: {weights.phash:.2f}, HOG: {weights.hog:.2f}, ORB: {weights.orb:.2f}, SSIM: {weights.ssim:.2f}, Edge: {weights.edge:.2f} (auto-normalized)</div>
       <div class=\"stats\">
         <div class=\"stat\"><div class=\"k\">Images loaded</div><div class=\"v\">{loaded_count}</div></div>
         <div class=\"stat\"><div class=\"k\">Images skipped</div><div class=\"v\">{skipped_count}</div></div>

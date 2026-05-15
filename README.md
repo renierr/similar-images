@@ -58,6 +58,8 @@ Options:
 - `--phash-weight` weight for pHash feature (default `0.2`)
 - `--hog-weight` weight for HOG feature (default `0.4`)
 - `--orb-weight` weight for ORB keypoint match feature (default `0.0`)
+- `--ssim-weight` weight for SSIM grayscale structure similarity (default `0.0`)
+- `--edge-weight` weight for Canny edge-structure similarity (default `0.0`)
 - `--output`, `-o` output report path (default `report.html`)
 
 Notes:
@@ -83,6 +85,9 @@ uv run similar-images scan "C:/images" --histogram-weight 0.1 --phash-weight 0.1
 
 # Enable ORB (good for mixed resolutions)
 uv run similar-images scan "C:/images" --histogram-weight 0.2 --phash-weight 0.2 --hog-weight 0.2 --orb-weight 0.4
+
+# Add structure-focused weights for low-res/high-res mix
+uv run similar-images scan "C:/images" --histogram-weight 0.15 --phash-weight 0.15 --hog-weight 0.2 --orb-weight 0.2 --ssim-weight 0.15 --edge-weight 0.15
 ```
 
 ## Output report
@@ -107,6 +112,8 @@ Per image, the tool extracts:
 - DCT-based pHash
 - HOG descriptor
 - ORB keypoint descriptors
+- grayscale SSIM-ready normalized image
+- Canny edge signature
 
 Final score uses weighted blend (defaults):
 
@@ -114,6 +121,8 @@ Final score uses weighted blend (defaults):
 - pHash: 20%
 - HOG: 40%
 - ORB: 0% (opt-in)
+- SSIM: 0% (opt-in)
+- Edge: 0% (opt-in)
 
 ### How similarity is calculated (step by step)
 
@@ -142,9 +151,17 @@ For each image, the tool computes three independent feature vectors and then com
    - Match with Hamming BFMatcher + ratio test (`0.75`).
    - `score_orb = good_matches / min(keypoints_a, keypoints_b)` (clamped to `[0,1]`).
 
-5. **Final blended score**
-   - `score = (w_hist * hist + w_phash * phash + w_hog * hog + w_orb * orb) / (w_hist + w_phash + w_hog + w_orb)`
-   - Weights are configurable via CLI options (`--histogram-weight`, `--phash-weight`, `--hog-weight`, `--orb-weight`).
+5. **SSIM similarity (optional, default 0%)**
+   - Compute grayscale SSIM on normalized `128x128` images.
+   - Captures structure consistency under blur/compression and some resolution changes.
+
+6. **Edge similarity (optional, default 0%)**
+   - Build Canny edge map and compare edge signatures by cosine similarity.
+   - Useful when color/texture differs but object boundaries are preserved.
+
+7. **Final blended score**
+   - `score = (w_hist * hist + w_phash * phash + w_hog * hog + w_orb * orb + w_ssim * ssim + w_edge * edge) / (w_hist + w_phash + w_hog + w_orb + w_ssim + w_edge)`
+   - Weights are configurable via CLI options (`--histogram-weight`, `--phash-weight`, `--hog-weight`, `--orb-weight`, `--ssim-weight`, `--edge-weight`).
    - Score is clamped to `[0, 1]`.
 
 ### Classification

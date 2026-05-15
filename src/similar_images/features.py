@@ -43,6 +43,9 @@ def build_features(image_bgr: np.ndarray) -> ImageFeatures:
 
     hog = np.array(_HOG_DESCRIPTOR.compute(gray_resized)).flatten().astype(np.float32)
 
+    edge_map = cv2.Canny(gray_resized, 80, 180)
+    edge_signature = edge_map.flatten().astype(np.float32) / 255.0
+
     orb_keypoints, orb_descriptors = _ORB.detectAndCompute(gray, None)
     orb_keypoint_count = len(orb_keypoints) if orb_keypoints is not None else 0
 
@@ -52,4 +55,6 @@ def build_features(image_bgr: np.ndarray) -> ImageFeatures:
         hog=hog,
         orb_descriptors=orb_descriptors,
         orb_keypoints=orb_keypoint_count,
+        gray_resized=gray_resized,
+        edge_signature=edge_signature,
     )

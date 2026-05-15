@@ -19,6 +19,8 @@ class ImageFeatures:
     hog: np.ndarray
     orb_descriptors: np.ndarray | None
     orb_keypoints: int
+    gray_resized: np.ndarray
+    edge_signature: np.ndarray
 
 
 @dataclass(frozen=True)

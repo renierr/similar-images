@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from .classifier import compare_all
@@ -25,6 +26,8 @@ def scan(
     phash_weight: float = typer.Option(0.2, min=0.0, max=1.0, help="Weight for pHash similarity."),
     hog_weight: float = typer.Option(0.4, min=0.0, max=1.0, help="Weight for HOG similarity."),
     orb_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for ORB keypoint match similarity."),
+    ssim_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for grayscale SSIM similarity."),
+    edge_weight: float = typer.Option(0.0, min=0.0, max=1.0, help="Weight for edge-structure similarity."),
     output: Path = typer.Option(Path("report.html"), "--output", "-o", help="HTML report path."),
 ) -> None:
     if duplicate_threshold < similar_threshold:
@@ -35,11 +38,13 @@ def scan(
         phash=phash_weight,
         hog=hog_weight,
         orb=orb_weight,
+        ssim=ssim_weight,
+        edge=edge_weight,
     )
     if weights.total() <= 0.0:
         raise typer.BadParameter(
             "At least one extraction weight must be > 0. "
-            "Use --histogram-weight, --phash-weight, or --hog-weight."
+            "Use --histogram-weight, --phash-weight, --hog-weight, --orb-weight, --ssim-weight, or --edge-weight."
         )
 
     resolved_folders = [folder.resolve() for folder in folders]
@@ -49,12 +54,35 @@ def scan(
         raise typer.Exit(code=1)
 
     console.print(f"Found {len(records)} image files. Building features and comparing...")
-    results, loaded_records = compare_all(
-        records=records,
-        similar_threshold=similar_threshold,
-        duplicate_threshold=duplicate_threshold,
-        weights=weights,
-    )
+
+    with Progress(
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=None),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        feature_task = progress.add_task("Extracting features", total=len(records))
+        compare_task = progress.add_task("Comparing pairs", total=None)
+
+        def on_feature_progress(done: int, total: int) -> None:
+            progress.update(feature_task, completed=done, total=total)
+
+        def on_compare_start(total_pairs: int) -> None:
+            progress.update(compare_task, total=total_pairs, completed=0)
+
+        def on_compare_progress(done: int, total: int) -> None:
+            progress.update(compare_task, completed=done, total=total)
+
+        results, loaded_records = compare_all(
+            records=records,
+            similar_threshold=similar_threshold,
+            duplicate_threshold=duplicate_threshold,
+            weights=weights,
+            on_feature_progress=on_feature_progress,
+            on_compare_start=on_compare_start,
+            on_compare_progress=on_compare_progress,
+        )
 
     skipped_count = len(records) - len(loaded_records)
     build_html_report(
@@ -79,6 +107,8 @@ def scan(
     table.add_row("pHash weight", f"{weights.phash:.2f}")
     table.add_row("HOG weight", f"{weights.hog:.2f}")
     table.add_row("ORB weight", f"{weights.orb:.2f}")
+    table.add_row("SSIM weight", f"{weights.ssim:.2f}")
+    table.add_row("Edge weight", f"{weights.edge:.2f}")
     table.add_row("Report", str(output.resolve()))
     console.print(table)
 

@@ -14,9 +14,11 @@ class SimilarityWeights:
     phash: float = 0.2
     hog: float = 0.4
     orb: float = 0.0
+    ssim: float = 0.0
+    edge: float = 0.0
 
     def total(self) -> float:
-        return self.histogram + self.phash + self.hog + self.orb
+        return self.histogram + self.phash + self.hog + self.orb + self.ssim + self.edge
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -54,6 +56,37 @@ def _orb_similarity(features_a: ImageFeatures, features_b: ImageFeatures) -> flo
     return max(0.0, min(1.0, float(score)))
 
 
+def _ssim_similarity(features_a: ImageFeatures, features_b: ImageFeatures) -> float:
+    gray_a = features_a.gray_resized.astype(np.float32)
+    gray_b = features_b.gray_resized.astype(np.float32)
+
+    c1 = (0.01 * 255) ** 2
+    c2 = (0.03 * 255) ** 2
+
+    mu_a = cv2.GaussianBlur(gray_a, (11, 11), 1.5)
+    mu_b = cv2.GaussianBlur(gray_b, (11, 11), 1.5)
+
+    mu_a_sq = mu_a * mu_a
+    mu_b_sq = mu_b * mu_b
+    mu_ab = mu_a * mu_b
+
+    sigma_a_sq = cv2.GaussianBlur(gray_a * gray_a, (11, 11), 1.5) - mu_a_sq
+    sigma_b_sq = cv2.GaussianBlur(gray_b * gray_b, (11, 11), 1.5) - mu_b_sq
+    sigma_ab = cv2.GaussianBlur(gray_a * gray_b, (11, 11), 1.5) - mu_ab
+
+    numerator = (2 * mu_ab + c1) * (2 * sigma_ab + c2)
+    denominator = (mu_a_sq + mu_b_sq + c1) * (sigma_a_sq + sigma_b_sq + c2)
+    denominator = np.where(denominator == 0, 1e-8, denominator)
+
+    ssim_map = numerator / denominator
+    ssim_value = float(np.mean(ssim_map))
+    return max(0.0, min(1.0, ssim_value))
+
+
+def _edge_similarity(features_a: ImageFeatures, features_b: ImageFeatures) -> float:
+    return max(0.0, min(1.0, _cosine_similarity(features_a.edge_signature, features_b.edge_signature)))
+
+
 def similarity_score(
     features_a: ImageFeatures,
     features_b: ImageFeatures,
@@ -69,6 +102,8 @@ def similarity_score(
     score_hog = max(0.0, score_hog)
 
     score_orb = _orb_similarity(features_a, features_b)
+    score_ssim = _ssim_similarity(features_a, features_b)
+    score_edge = _edge_similarity(features_a, features_b)
 
     total_weight = weights.total()
     if total_weight <= 0.0:
@@ -79,6 +114,8 @@ def similarity_score(
         + (weights.phash * score_phash)
         + (weights.hog * score_hog)
         + (weights.orb * score_orb)
+        + (weights.ssim * score_ssim)
+        + (weights.edge * score_edge)
     ) / total_weight
 
     return max(0.0, min(1.0, float(score)))
