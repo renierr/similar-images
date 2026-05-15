@@ -20,3 +20,14 @@ def scan_images(folder: Path, recursive: bool) -> list[ImageRecord]:
 
     records.sort(key=lambda x: str(x.path).lower())
     return records
+
+
+def scan_images_from_folders(folders: list[Path], recursive: bool) -> list[ImageRecord]:
+    deduped: dict[Path, ImageRecord] = {}
+    for folder in folders:
+        for record in scan_images(folder=folder, recursive=recursive):
+            deduped[record.path] = record
+
+    records = list(deduped.values())
+    records.sort(key=lambda x: str(x.path).lower())
+    return records

@@ -81,7 +81,7 @@ def _classifier_cell_html(item: PairResult) -> str:
 
 
 def build_html_report(
-    scanned_folder: Path,
+    scanned_folders: list[Path],
     output_path: Path,
     results: list[PairResult],
     loaded_count: int,
@@ -91,6 +91,9 @@ def build_html_report(
 ) -> None:
     duplicates, similars, differents = _summary_counts(results)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    scanned_folders_html = "".join(
+        [f"<li>{escape(str(folder))}</li>" for folder in scanned_folders]
+    )
 
     rows = []
     for item in results:
@@ -133,6 +136,8 @@ def build_html_report(
     .hero {{ background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04); }}
     h1 {{ margin: 0 0 8px; font-size: 1.6rem; }}
     .meta {{ color: var(--muted); font-size: 0.95rem; }}
+    .scan-list {{ margin: 6px 0 8px 20px; padding: 0; color: #334155; }}
+    .scan-list li {{ margin: 2px 0; word-break: break-all; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.86rem; }}
     .stats {{ margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }}
     .stat {{ background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }}
     .stat .k {{ color: var(--muted); font-size: 0.85rem; }}
@@ -193,7 +198,8 @@ def build_html_report(
   <main class=\"wrap\">
     <section class=\"hero\">
       <h1>Similar Images Scan Report</h1>
-      <div class=\"meta\">Scanned folder: {escape(str(scanned_folder))}</div>
+      <div class=\"meta\">Scanned folders:</div>
+      <ul class=\"scan-list\">{scanned_folders_html}</ul>
       <div class=\"meta\">Generated at: {generated_at}</div>
       <div class=\"meta\">Thresholds - similar: {similar_threshold:.2f}, duplicate: {duplicate_threshold:.2f}</div>
       <div class=\"stats\">

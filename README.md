@@ -15,12 +15,24 @@ uv sync
 uv run similar-images scan "C:/path/to/images" --output report.html
 ```
 
+Scan multiple folders in one run:
+
+```bash
+uv run similar-images scan "C:/photos/2024" "D:/archive/screenshots" "E:/misc" --output report.html
+```
+
 Options:
 
 - `--recursive/--no-recursive` scan nested folders (default recursive)
 - `--similar-threshold` score threshold for `similar` (default `0.82`)
 - `--duplicate-threshold` score threshold for `duplicate` (default `0.96`)
 - `--output`, `-o` output report path (default `report.html`)
+
+Notes:
+
+- You can pass one or more folder paths after `scan`.
+- Images from all provided folders are combined into a single comparison set.
+- Exact duplicate file paths are deduplicated automatically before comparison.
 
 ## Output report
 
