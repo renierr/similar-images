@@ -22,6 +22,13 @@ app = typer.Typer(help="Scan a folder and classify similar images.")
 console = Console()
 
 
+@app.command("gui")
+def gui() -> None:
+    """Launch the graphical user interface."""
+    from .gui import main as gui_main
+    gui_main()
+
+
 @app.command("scan")
 def scan(
     folders: list[Path] = typer.Argument(

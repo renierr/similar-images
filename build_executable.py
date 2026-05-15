@@ -26,6 +26,8 @@ def main() -> None:
         "similar-images",
         "--paths",
         str(project_root / "src"),
+        "--collect-all",
+        "customtkinter",
         str(entry_script),
     ]
 
