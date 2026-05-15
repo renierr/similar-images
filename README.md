@@ -38,8 +38,6 @@ The HTML report includes:
 
 ## Similarity approach
 
-The comparison logic is inspired by `../heresphere-server/src/similar.py` and adapted for still images.
-
 Per image, the tool extracts:
 
 - normalized color histogram
